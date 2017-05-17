@@ -1,0 +1,687 @@
+#lang racket
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                              Board State                                    ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;'((turn, (list of column stats), null may add more later). (the actual board);
+; a general board layout                                                      ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define APFGame
+	'(
+		(
+			0 ;Player's Turn - 0/1 codes
+			0 ;disks in column 1
+			0 ;disks in column 2
+			0 ;disks in column 3
+			0 ;disks in column 4
+			0 ;disks in column 5
+			0 ;disks in column 6
+			0 ;disks in column 7
+		)
+	.
+		(
+			("1" "2" "3" "4" "5" "6")
+			("2" " " " " " " " " " ")
+			("3" " " " " " " " " " ")
+			("4" " " " " " " " " " ")
+			("5" " " " " " " " " " ")
+			("6" " " " " " " " " " ")
+			("7" " " " " " " " " " ")
+		)
+	)
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                              (a) APFStartGame                               ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFStartGame)
+	;board initialization
+	(set! APFGame
+		'(
+			(
+				0 ;Player's Turn - 0/1 codes
+				0 ;disks in column 1
+				0 ;disks in column 2
+				0 ;disks in column 3
+				0 ;disks in column 4
+				0 ;disks in column 5
+				0 ;disks in column 6
+				0 ;disks in column 7
+			)
+			.
+			(
+				(" " " " " " " " " " " ") ;column 1 - row 1, row 2, row 3, ... going in ascending order
+				(" " " " " " " " " " " ") ;column 2
+				(" " " " " " " " " " " ") ;column 3
+				(" " " " " " " " " " " ") ;column 4
+				(" " " " " " " " " " " ") ;column 5
+				(" " " " " " " " " " " ") ;column 6
+				(" " " " " " " " " " " ") ;column 7
+			)
+		)
+	)
+	;end of the board initialization
+
+	;start message to player
+	(display "╔═════════════════════════╗")
+	(newline)
+	(display "║   LET THE GAME BEGIN!   ║")
+	(newline)
+	(display "╚═════════════════════════╝")
+	(newline)
+
+	#t
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                              (b) APFMarKMove                                ;
+;                                                                             ;
+;(b) APFMarKMove - given the column position it will alter the board and then  ;
+;return that column                                                           ;
+;column parameter - 1 through 7, so we need to convert to the form we use     ;
+;internally                                                                   ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFMarkMove columnNumber)
+		;TO DO: with stats, change player, update how many plays in a column
+		(set! APFGame
+			(cons
+				(APFupdateStats columnNumber)
+				(APFalterBoardState (APFgetBoard) (APFgetReplacementColumn (APFgetColumn (APFgetBoard) columnNumber) (APFgetFallPostion columnNumber)) columnNumber)
+			)
+		)
+
+		;return the column number of the drop
+		columnNumber
+)
+
+(define (APFalterBoardState previousBoardState columnReplacement columnNumber)
+	(if (= columnNumber 1)
+		;this is the column we want to replace, ad the remainder of the previousBoardState
+		(cons columnReplacement (cdr previousBoardState))
+		;we still need to walk, but we need to included the no-altered  board
+		(cons (car previousBoardState) (APFalterBoardState (cdr previousBoardState) columnReplacement (- columnNumber 1)))
+	)
+)
+
+(define (APFgetReplacementColumn list positionToDrop)
+	(if (= positionToDrop 1)
+		;we need to place the item at this position then add the rest of the list
+		(cons
+			(if (= (APFgetPlayer) 0)
+				"X"
+				"O"
+			)
+			(cdr list)
+		)
+
+		;build the list and call recursively
+		(cons (car list) (APFgetReplacementColumn (cdr list) (- positionToDrop 1)))
+	)
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            (c) APFShowGame                                  ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFShowGame)
+	(APFShowGameHelper 6)
+	#t
+)
+
+(define (APFShowGameHelper rowNumber)
+	(cond
+		;build the top of the board
+		((= rowNumber 6)
+	 		(display "╔═══╦═══╦═══╦═══╦═══╦═══╦═══╗")
+	 		(newline)
+
+	 		;call a function to display the values in the row
+	 		(APFconstructRowDisplay rowNumber 1)
+
+			;put the row dividers in
+			(newline)
+			(display "╠═══╬═══╬═══╬═══╬═══╬═══╬═══╣")
+			(newline)
+
+			;we need a recursive call to get it to call the remaining rows
+			(APFShowGameHelper (- rowNumber 1))
+
+		)
+
+		;build the middle of the board
+		((> rowNumber 1)
+	 		;call a function to display the values in the row
+	 		(APFconstructRowDisplay rowNumber 1)
+
+			;put the row dividers in
+			(newline)
+			(display "╠═══╬═══╬═══╬═══╬═══╬═══╬═══╣")
+			(newline)
+
+			;we need a recursive call to get it to call the remaining rows
+			(APFShowGameHelper (- rowNumber 1))
+
+		)
+
+		;build the bottom of the board
+		((= rowNumber 1)
+			;call a function to display the values in the row
+			(APFconstructRowDisplay rowNumber 1)
+
+			;put the botton on
+			(newline)
+			(display "╚═══╩═══╩═══╩═══╩═══╩═══╩═══╝")
+			(newline)
+			;we dont need a recursive call, is the end
+		)
+	)
+)
+
+(define (APFconstructRowDisplay rowNumber columnNumber)
+	(cond
+		((< columnNumber 7)
+			(display "║ ")
+			(display (APFgetCell rowNumber columnNumber))
+			(display  " ")
+
+			;recursively call to build the row
+			(APFconstructRowDisplay rowNumber (+ columnNumber 1))
+		)
+		;we need to cap the 7th column off
+		((= columnNumber 7)
+			(display "║ ")
+			(display (APFgetCell rowNumber columnNumber))
+			(display  " ║")
+		)
+	)
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            (d) APFMakeMove                                  ;
+; will return a value for the column for the move it has selected, but will   ;
+; not actualy call APFMarkMove
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;(define (APFMakeMove)
+;  ;simply generate a random number
+;  ;generates between 0 and N-1
+;  (APFmakeMoveHelper (+ 1 (random 7)))
+;)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                           MORE COMPLEX FUNCTION                              ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFMakeMove)
+	(APFMarkMove
+		;first check to see if we have a possible WINS
+		(if (not (eq? (APFwinOnNextMoveCheck) #f))
+			;there is a win on the next move
+			(APFwinOnNextMoveCheck)
+			;there is not a win on the next move, check for block
+			(if (not (eq? (APFblockOpponentWinHelper 1) #f))
+				;there is a block
+				(APFblockOpponentWinHelper 1)
+				;there is not a block, pick random
+				(APFmakeMoveHelper (+ 1 (random 7)))
+			)
+		)
+		;second see if we need to block the OPPONENT
+
+		;third we need to see if we can have 2 missing, then 3 missing...
+	)
+)
+
+;WE NEED TO CHECK TO SEE IF THERE IS ANY POSSIBLE WINS WITHIN THE NEXT MOVE
+(define (APFwinOnNextMoveCheck)
+  (APFwinOnNextMoveCheckHelper 1)
+)
+
+;we will start on 1 and then go to 7
+(define (APFwinOnNextMoveCheckHelper columnNumber)
+  ;we need to first make sure that we have not steped outside of the bounds of
+    ;column on the board
+  (if (< columnNumber 8)
+    ;we need to always first make sure it is a legal move
+    (if (APFLegalMoveP columnNumber)
+      ;there is a current legal move on the column. check if it is a win
+      (if (APFWillWinP columnNumber)
+        ;this current column will result in a win. return this value
+        columnNumber
+        ;this current row will not result in a win
+        (APFwinOnNextMoveCheckHelper (+ 1 columnNumber))
+      )
+
+      ;the current column has no legal moves so lets chek the next column
+      (APFwinOnNextMoveCheckHelper (+ 1 columnNumber))
+    );END IF (APFLegalMoveP columnNumber)
+
+    ;we will return false because we have no win
+    #f
+  );END IF (< columnNumber 8)
+)
+
+;NOTE IF THERE IS NOT A WIN ON THE NEXT MOVE WE NEED TO CHECK IF THE OPPONENT
+  ;HAS ONE AND THEN BLOCK IT
+;once APFwillOpponentWin is true, return that column number for that to be placed
+(define (APFblockOpponentWinHelper columnNumber)
+  ;we need to first make sure that we have not steped outside of the bounds of
+    ;column on the board
+  (if (< columnNumber 8)
+    ;we need to always first make sure it is a legal move
+    (if (APFLegalMoveP columnNumber)
+      ;there is a current legal move on the column. check if it is a win
+      (if (APFwillOpponentWin columnNumber)
+        ;this current column will result in a win. return this value
+        columnNumber
+        ;this current row will not result in a win
+        (APFblockOpponentWinHelper (+ 1 columnNumber))
+      )
+
+      ;the current column has no legal moves so lets chek the next column
+      (APFblockOpponentWinHelper (+ 1 columnNumber))
+    );END IF (APFLegalMoveP columnNumber)
+
+    ;we will return nothing because we have exhausted the columns NO block
+    #f
+  );END IF (< columnNumber 8)
+)
+
+(define (APFmakeMoveHelper columnNumber)
+  (if (APFLegalMoveP columnNumber)
+    ;the move is legal reutrn the column
+    columnNumber
+    ;it is not legal, call APFMakeMove again so it will generate a new number
+    (APFMakeMove)
+  )
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            (e) APFLegalMoveP                                ;
+; given a column it will see if a move will result in going out of bounds     ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFLegalMoveP columnNumber)
+	;checking to see if 6 plays have been made on the column, if so then it is not legal
+	(if (= (APFgetPlaysOnColumn columnNumber) 6)
+		;there have been 6 moves, column is full
+		#f
+		;there have been less then 6 moves
+		#t
+	)
+)
+
+;START OF TESTING FOR WIN
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+;NOTE: DEPENDING IF THE MOVE HAS BEEN MADE OR NOT THE CURENT PLAYER WILL BE
+;DIFFERENT.
+	;if the move HAS BEEN MADE we need to get the OPPOSITE player
+	;from the CURRENT PLAYER (THAT IS WINP)
+
+	;if the move HAS NOT BEEN MADE we need to get the CURRENT player
+	;(THAT IS WILLWINP)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            (F) APFWinP                                      ;
+; given a column it will see if the last move resulted in a win               ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;parameter is the last column that was made, and using that we need to see if
+;there was a win. So, we check summing up horizontal, vertical, ect to see if 4
+
+;we will use the drop position for the checking horizontal, diagonal
+;columnNumber = the column of last move
+(define (APFWinP columnNumber)
+	;the move has already been made, and the chip is in place
+
+	;so we need to get the position of the chip
+
+	;we are going to test to see which is a win.
+	(or (or (APFisDiagonalWin (APFgetPlaysOnColumn columnNumber) columnNumber (APFgetChipLast))
+					(APFisHorizontalWin (APFgetPlaysOnColumn columnNumber) columnNumber (APFgetChipLast)))
+					;end inner or
+	(APFisVerticalWin (APFgetPlaysOnColumn columnNumber) columnNumber (APFgetChipLast)))
+	;end outer or
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            (F) APFWillWinP                                  ;
+; given a column it will see if the next move resulted in a win               ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;(g) APFWillWinP
+;parameter is the last column that was made, and using that we need to see if
+;there was a win. So, we check summing up horizontal, vertical, ect to see if 3
+
+;we will use the drop position for the checking horizontal, diagonal
+(define (APFWillWinP columnNumber)
+	;the move has already been made, and the chip is in place
+
+	;so we need to get the position of the chip
+	;NOTE: because te APFgetPlaysOnColumn() will return the number of plays, we need
+		;to trick the function into thinking we already made the play because in the
+		;theck win functions we count one below the last position, so we just
+		;increment the number of plays
+
+	;we are going to test to see which is a win.
+	(or (or (APFisDiagonalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipNext))
+					(APFisHorizontalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipNext)))
+					;end inner or
+	(APFisVerticalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipNext)))
+	;end outer or
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                            willOpponentWinHelper                            ;
+; used to block in the APFMakeMove                                            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (APFwillOpponentWin columnNumber)
+	;the move has already been made, and the chip is in place
+
+	;so we need to get the position of the chip
+	;NOTE: because te APFgetPlaysOnColumn() will return the number of plays, we need
+		;to trick the function into thinking we already made the play because in the
+		;theck win functions we count one below the last position, so we just
+		;increment the number of plays
+
+	;we are going to test to see which is a win.
+	(or (or (APFisDiagonalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipLast))
+					(APFisHorizontalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipLast)))
+					;end inner or
+	(APFisVerticalWin (+ (APFgetPlaysOnColumn columnNumber) 1) columnNumber (APFgetChipLast)))
+	;end outer or
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                          DIAGONAL WIN CHECKING                              ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;diagonal win checking
+(define (APFisDiagonalWin rowNumber columnNumber chip)
+	(cond
+		; increasing right helper                                       increasing left helper
+		((>= (+ (APFdWIRHelper (+ rowNumber 1) (+ columnNumber 1) 0 chip) (APFdWILHelper (- rowNumber 1) (- columnNumber 1) 0 chip)) 3) #t)
+		; decreasing right helper                                       decreasing left helper
+		((>= (+ (APFdWDRHelper (- rowNumber 1) (+ columnNumber 1) 0 chip) (APFdWDLHelper (+ rowNumber 1) (- columnNumber 1) 0 chip)) 3) #t)
+		;default case loose #f
+		((= 1 1) #f)
+	)
+)
+
+
+	;increasing slope
+		;right side
+		(define (APFdWIRHelper rowNumber columnNumber count chip)
+			(if (and (< rowNumber 7) (< columnNumber 8))
+				;true
+				(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+					;there is a break in the column
+					count
+					;walk down and count
+					(APFdWIRHelper (+ rowNumber 1) (+ columnNumber 1) (+ count 1) chip)
+				)
+
+				;false
+				;we have reached the end of the board bounds return the current count
+				count
+			)
+		)
+
+		;left side
+		(define (APFdWILHelper rowNumber columnNumber count chip)
+			(if (and (> rowNumber 0) (> columnNumber 0))
+				;true
+				(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+					;there is a break in the column return current count
+					count
+					;walk down and count
+					(APFdWILHelper (- rowNumber 1) (- columnNumber 1) (+ count 1) chip)
+				)
+				;false
+				;we have reached the end of the board bounds return the current count
+				count
+			)
+		)
+
+	;decreasing slope
+		;right side
+		(define (APFdWDRHelper rowNumber columnNumber count chip)
+			(if (and (> rowNumber 0) (< columnNumber 8))
+				;true
+				(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+					;there is a break in the column
+					count
+					;walk down and count
+					(APFdWDRHelper (- rowNumber 1) (+ columnNumber 1) (+ count 1) chip)
+				)
+
+				;false
+				;we have reached the end of the board bounds return the current count
+				count
+			)
+		)
+
+		;left side
+		(define (APFdWDLHelper rowNumber columnNumber count chip)
+			(if (and (< rowNumber 7) (> columnNumber 0))
+				;true
+				(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+					;there is a break in the column
+					count
+					;walk down and count
+					(APFdWDLHelper (+ rowNumber 1) (- columnNumber 1) (+ count 1) chip)
+				)
+
+				;false
+				;we have reached the end of the board bounds return the current count
+				count
+			)
+		)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                          HORIZONTAL WIN CHECKING                            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;horizontal win checking
+(define (APFisHorizontalWin rowNumber columnNumber chip)
+	;           right side                                left side
+	(if (>= (+ (APFhWRHelper rowNumber (+ columnNumber 1) 0 chip)(APFhWLHelper rowNumber (- columnNumber 1) 0 chip)) 3)
+		;there is at least 3 besides the start position so WIN
+		#t
+		;there is not enough for a win
+		#f
+	)
+)
+
+	;right
+	(define (APFhWRHelper rowNumber columnNumber count chip)
+		(if (< columnNumber 8)
+			;the check is within the bounds
+			(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+				;there is a break in the row
+				count
+				;walk to the right
+				(APFhWRHelper rowNumber (+ columnNumber 1) (+ count 1) chip)
+			)
+			;the check is outside the bounds return count
+			count
+		)
+	)
+
+	;left
+	(define (APFhWLHelper rowNumber columnNumber count chip)
+		(if (> columnNumber 0)
+			;the check is within the bounds
+			(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+				;there is a break in the row
+				count
+				;walk to the left
+				(APFhWLHelper rowNumber (- columnNumber 1) (+ count 1) chip)
+			)
+			;the check is outside the bounds return count
+			count
+		)
+	)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                          VERTICAL WIN CHECKING                              ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;vertical win checking
+(define (APFisVerticalWin rowNumber columnNumber chip)
+	(if (>= (APFvWHelper (- rowNumber 1) columnNumber 0 chip) 3)
+		;there will be a win
+		#t
+		;there will not be a win
+		#f
+	)
+)
+
+;NOTE - I could always just walk down a row, but this is easier...
+(define (APFvWHelper rowNumber columnNumber count chip)
+	;we can see what the fall position would be and if it is less then 4 we dont need to check (TODO)
+
+	;we only want to check down to rowNumber 1
+	(if (> rowNumber 0)
+		;true
+		;because the chips fall down, there will not be anything on top, just walk down
+		(if (or (eq? (APFgetCell rowNumber columnNumber) " ") (not (eq? (APFgetCell rowNumber columnNumber) chip)))
+			;there is a break in the column
+			count
+			;walk down and count
+			(APFvWHelper (- rowNumber 1) columnNumber (+ count 1) chip)
+		)
+
+		;false
+		;the check is outside the bounds return count
+		count
+	)
+)
+
+;END OF WIN CHECKING
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                             End of required functions                       ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                 GET CHIP                                    ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;APFgetChipNext - player 0 = "X", player 1 = "O"
+;returns the chip that is going to be droped if a move is made
+(define (APFgetChipNext)
+	(if (= (APFgetPlayer) 0)
+		"X"
+		"O"
+	)
+)
+
+;APFgetChipLast - return the value of the chip last played
+(define (APFgetChipLast)
+	(if (= (APFgetPlayer) 0)
+		"O"
+		"X"
+	)
+)
+
+;APFgetBoard - returns the matrix for the board
+(define (APFgetBoard)
+	(cdr APFGame)
+)
+
+;APFgetStats - returns a list including all the board stats
+(define (APFgetStats)
+	(car APFGame)
+)
+
+;APFgetPlayer - returns who is up to play (0 or 1)
+(define (APFgetPlayer)
+	(car (APFgetStats))
+)
+
+;APFgetColumnStats - returns a list of stats for each column (column 1, column 2, column 2, ... ascending order)
+(define (APFgetColumnStats)
+	(cdr (APFgetStats))
+)
+
+;APFgetPlaysOnColumn - returns the number of chips on the column you specify
+(define (APFgetPlaysOnColumn columnNumber)
+	(APFgetPlaysOnColumnHelper (APFgetColumnStats) columnNumber)
+)
+
+;APFgetPlaysOnColumnHelper
+(define (APFgetPlaysOnColumnHelper list columnNumber)
+	(if (= columnNumber 1)
+		;number of chips for the desired column
+		(car list)
+		;recursive call to walk down the list to the desired column
+		(APFgetPlaysOnColumnHelper (cdr list) (- columnNumber 1))
+	)
+)
+
+;getFallPosition - returns the row number the chip will be placed
+(define (APFgetFallPostion columnNumber)
+	(+ (APFgetPlaysOnColumn columnNumber) 1)
+)
+
+;APFupdatePlaysOnColumn - return an updated list of plays on each column
+(define (APFupdatePlaysOnColumn list columnNumber)
+	(if (= columnNumber 1)
+		;this is the column we want
+		(cons (+ (car list) 1) (cdr list))
+		;build using the current column and call recursively until we find correct column
+		(cons (car list) (APFupdatePlaysOnColumn (cdr list) (- columnNumber 1)))
+	)
+)
+
+
+;APFupdateStats - will be called when a APFMakeMove is called and will change the number of
+	;moves made and who’s turn it is
+(define (APFupdateStats columnMoveWasMade)
+	(cons
+		(if (= (APFgetPlayer) 0)
+			1
+			0
+		)
+		(APFupdatePlaysOnColumn (APFgetColumnStats) columnMoveWasMade)
+	)
+)
+
+;APFgetCell - return a value at a given rowNumber and columnNumber
+(define (APFgetCell rowNumber columnNumber)
+	(APFgetRow (APFgetColumn (APFgetBoard) columnNumber) rowNumber)
+)
+
+;APFgetColumn - returns an entire column according to columnNumber
+(define (APFgetColumn matrix columnNumber)
+	(if (= columnNumber 1)
+		;this is the column we want
+		(car matrix)
+		;we need to recursively walk to the column
+		(APFgetColumn (cdr matrix) (- columnNumber 1))
+	)
+)
+
+;APFgetRow - returns the value in the column provides according to the rowNumber
+(define (APFgetRow column rowNumber)
+	(if (= rowNumber 1)
+		;this is the row we want
+		(car column)
+		;we need to recursively walk to the value
+		(APFgetRow (cdr column) (- rowNumber 1))
+	)
+)
